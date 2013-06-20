@@ -102,7 +102,7 @@ function trend_surface_model_kriging(obs_data, X, K, V)
     XtSX = nothing
     beta = nothing
 
-    i = 0
+    iters = 0
     subzeros = 0
 
     # the while loop contains protection against division by zero in case s2_eta_hat_old
@@ -122,11 +122,6 @@ function trend_surface_model_kriging(obs_data, X, K, V)
         Q, R = qr(Sigma_1_2 * Xobs)
         beta = R \ (Q' * yt)
 
-        println("qr: res_norm -> $(norm(y - Xobs * beta))")
-        old_beta = XtSX \ Xobs' * (Sigma \ y)
-        println("normal eq: res_norm -> $(norm(y - Xobs * old_beta))")
-        res = y - Xobs * beta
-
         # compute new estimate of variance of microscale variability
         s2_array = res.^2 - m_var
         for j in 1:Nobs
@@ -142,8 +137,7 @@ function trend_surface_model_kriging(obs_data, X, K, V)
         end
 
         subzeros = sum(s2_array .< 0)
-        i += 1
-        println("Iter: $i  old $s2_eta_hat_old  new $s2_eta_hat  other $s2_eta_hat2")
+        iters += 1
     end
 
     # compute the OLS fit of the covariates to the observations
@@ -157,7 +151,7 @@ function trend_surface_model_kriging(obs_data, X, K, V)
     spush("kriging_beta", beta_ext)
 
     spush("kriging_sigma2_eta", s2_eta_hat)
-    spush("kriging_iters", i)
+    spush("kriging_iters", iters)
     spush("kriging_subzero_s2_estimates", subzeros)
 
     # compute kriging field and kriging variance 

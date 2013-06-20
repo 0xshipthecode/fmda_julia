@@ -75,3 +75,15 @@ covariates is equal to the number of observations, the trend surface model will 
 
 The `assimilation_time_window` defines the validity of observations in seconds.  Each observation is valid for the duration 
 of the `assimilation_time_window` centered on the timestamp of the observation.
+
+
+Running the julia code
+----------------------
+
+Execute the following in the `fmda_julia` directory:
+
+    ./run_data_assimilation.jl <path_to_config_file>
+
+
+This will load all available inputs and start processing the wrfout file and the obtained measurements.
+
