@@ -394,7 +394,6 @@ function nccreate(fil::String,varname::String,atts::Dict,dims...)
   # to be done
   # open the file
   # create the NcVar object
-  println("Creating varname $varname")
   v=NcVar(varname,dim,atts,Float64)
   # Test if the file already exists
   if (isfile(fil)) 

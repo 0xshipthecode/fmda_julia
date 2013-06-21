@@ -46,6 +46,9 @@ function create_fm_variables(file_name)
         if !haskey(nc.vars, var_names[i])
             atts = {"coordinates"=>"XLONG XLAT","units"=>"kg/kg","stagger"=>"","MemoryOrder"=>"XY ","description"=>long_names[i]}
             NetCDF.nccreate(file_name, var_names[i], atts, we_dim, sn_dim, t_dim)
+            println("INFO: created variable $(var_names[i])")
+        else
+            println("INFO: variable $(var_names[i]) already existed")
         end
     end
 end
@@ -218,7 +221,7 @@ function main(args)
 
     # create the new variables in the wrfout file for storing fuel moisture
     println("INFO: creating FM variables in wrfout file")
-#    create_fm_variables(cfg["wrf_output"])
+    create_fm_variables(cfg["wrf_output"])
     nc = NetCDF.open(cfg["wrf_output"], NetCDF.NC_WRITE)
 
     ###  Run the model and data assimilation
