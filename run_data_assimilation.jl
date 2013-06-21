@@ -43,8 +43,10 @@ function create_fm_variables(file_name)
     var_names = ASCIIString[ "FM1", "FM10", "FM100" ]
     long_names = ["1hr fuel moisture", "10hr fuel moisture", "100hr fuel moisture"]
     for i in 1:3
-        atts = {"coordinates"=>"XLONG XLAT","units"=>"kg/kg","stagger"=>"","MemoryOrder"=>"XY ","description"=>long_names[i]}
-        NetCDF.nccreate(file_name, var_names[i], atts, we_dim, sn_dim, t_dim)
+        if !haskey(nc.vars, var_names[i])
+            atts = {"coordinates"=>"XLONG XLAT","units"=>"kg/kg","stagger"=>"","MemoryOrder"=>"XY ","description"=>long_names[i]}
+            NetCDF.nccreate(file_name, var_names[i], atts, we_dim, sn_dim, t_dim)
+        end
     end
 end
 
