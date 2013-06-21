@@ -151,7 +151,7 @@ function python_render_item(io::IO, k::String, v::Any)
 end
 
 # specialize for floats which are otherwise printed with too many digits
-python_render_item(io::IO, f::Float64) = isnan(f) ? @printf("np.nan") : @printf(io, "%f", f)
+python_render_item(io::IO, f::Float64) = isnan(f) ? @printf(io, "np.nan") : @printf(io, "%f", f)
 python_render_item(io::IO, f) = show(io, f)
 
 

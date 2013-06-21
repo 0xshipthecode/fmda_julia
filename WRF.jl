@@ -9,7 +9,7 @@ module WRF
 using Calendar
 import Calendar.CalendarTime
 
-using netcdf
+using NetCDF
 
 
 type WRFData
@@ -22,19 +22,15 @@ type WRFData
 
     # the times of recording history
     tm :: Array{CalendarTime}
-
-    WRFData(file_path) = new(file_path, Dict{String,Array{Float64}}(), Array(CalendarTime,0))
-
 end
 
+WRFData(file_path) = WRFData(file_path, Dict{String,Array{Float64}}(), Array(CalendarTime,0))
 
 
 function load_wrf_data(file_path::String, var_list::Array{ASCIIString})
 
     w = WRFData(file_path)
-    w.file_path = file_path
-
-    nc_file = netcdf.open(file_path)
+    nc = NetCDF.open(file_path)
 
     vl = Array(ASCIIString, 0)
     def_var_list = ["T2", "Q2", "PSFC", "RAINC", "RAINNC"]
@@ -44,23 +40,24 @@ function load_wrf_data(file_path::String, var_list::Array{ASCIIString})
     append!(vl, def_var_list)
 
     for v in vl
-        w.fields[v] = netcdf.ncread(file_path, v)
+        fld = NetCDF.readvar(nc, v, [1, 1, 1], [-1, -1, -1])
+        w.fields[v] = fld
     end
 
-    tm = netcdf.ncread(file_path, "Times")
+    tm = NetCDF.readvar(nc, "Times", [1, 1], [-1, -1])'
     for i in 1:size(tm,1)
         push!(w.tm, Calendar.parse("yyyy-MM-dd_HH:mm:ss", ascii(squeeze(tm[i,:], 1)), "GMT"))
     end
 
     # read in grid dimensions
-    w.fields["lon"] = squeeze(netcdf.ncread(file_path, "XLONG")[1,:,:], 1)
-    w.fields["lat"] = squeeze(netcdf.ncread(file_path, "XLAT")[1,:,:], 1)
+    w.fields["lon"] = squeeze(NetCDF.readvar(nc, "XLONG", [1, 1, 1], [-1, -1, -1])[:,:,1], 3)
+    w.fields["lat"] = squeeze(NetCDF.readvar(nc, "XLAT", [1, 1, 1], [-1, -1, -1])[:,:,1], 3)
 
     # compute derived variables
     compute_rainfall_per_hour(w)
     compute_equilibrium_moisture(w)
 
-    netcdf.close(nc_file)
+    NetCDF.close(nc)
 
     return w
 end
@@ -82,27 +79,26 @@ function field(w::WRFData, fname)
     return w.fields[fname]
 end
 
-function interpolated_field(W::WRFData, fname)
-    F = field(W, fname)
+function interpolated_field(w::WRFData, fname)
+    F = field(w, fname)
     IF = zeros(Float64, size(F))
-    N = size(F,1)
-    IF[2:N,:,:] = 0.5 * (F[1:N-1,:,:] + F[2:N,:,:])
+    N = size(F,3)
+    IF[:,:,2:N] = 0.5 * (F[:,:,1:N-1] + F[:,:,2:N])
     return IF
 end
 
 
 function compute_rainfall_per_hour(w::WRFData)
-
     rainnc = field(w, "RAINNC")
     rainc = field(w, "RAINC")
     rain = zeros(Float64, size(rainnc))
-    rain_old = zeros(Float64, size(rain[1,:,:]))
+    rain_old = zeros(Float64, size(rain[:,:,1]))
 
     for i in 2:length(w.tm)
         dt = (w.tm[i] - w.tm[i-1]).millis / 1000
-        rain[i,:,:] = ((rainc[i,:,:] + rainnc[i,:,:]) - rain_old) * 3600.0 / dt
-        rain_old[:,:,:] = rainc[i,:,:]
-        rain_old += rainnc[i,:,:]
+        rain[:,:,i] = ((rainc[:,:,i] + rainnc[:,:,i]) - rain_old) * 3600.0 / dt
+        rain_old[:,:,:] = rainc[:,:,i]
+        rain_old += rainnc[:,:,i]
      end
 
      w.fields["RAIN"] = rain
@@ -120,16 +116,15 @@ end
 
 
 function compute_equilibrium_moisture(w::WRFData)
-
     # pull out required fields from WRF
     P, Q, T = field(w, "PSFC"), field(w, "Q2"), field(w, "T2")
 
-    N = size(P,1)
+    N = size(P,3)
 
     # Xi stands for X interpolated
-    Pi = 0.5 * (P[1:N-1,:,:] + P[2:N,:,:])
-    Qi = 0.5 * (Q[1:N-1,:,:] + Q[2:N,:,:])
-    Ti = 0.5 * (T[1:N-1,:,:] + T[2:N,:,:])
+    Pi = 0.5 * (P[:,:,1:N-1] + P[:,:,2:N])
+    Qi = 0.5 * (Q[:,:,1:N-1] + Q[:,:,2:N])
+    Ti = 0.5 * (T[:,:,1:N-1] + T[:,:,2:N])
 
     # compute saturated vapor pressure
     Pws = exp(54.842763 - 6763.22/Ti - 4.210 * log(Ti) + 0.000367*Ti
@@ -146,8 +141,8 @@ function compute_equilibrium_moisture(w::WRFData)
     Ed = zeros(Float64, size(P))
     Ew = zeros(Float64, size(P))
 
-    Ed[2:,:,:] = 0.924*RH.^0.679 + 0.000499*exp(0.1*RH) + 0.18*(21.1 + 273.15 - Ti).*(1 - exp(-0.115*RH))
-    Ew[2:,:,:] = 0.618*RH.^0.753 + 0.000454*exp(0.1*RH) + 0.18*(21.1 + 273.15 - Ti).*(1 - exp(-0.115*RH))
+    Ed[:,:,2:] = 0.924*RH.^0.679 + 0.000499*exp(0.1*RH) + 0.18*(21.1 + 273.15 - Ti).*(1 - exp(-0.115*RH))
+    Ew[:,:,2:] = 0.618*RH.^0.753 + 0.000454*exp(0.1*RH) + 0.18*(21.1 + 273.15 - Ti).*(1 - exp(-0.115*RH))
 
     Ed *= 0.01
     Ew *= 0.01
@@ -160,7 +155,7 @@ end
 
 function slice_field(w::WRFData, fn::String)
     # remove the time dimension from a static field and save a lot of storage
-    w.fields[fn] = squeeze(w.fields[fn][1,:,:], 1)
+    w.fields[fn] = squeeze(w.fields[fn][:,:,1], 3)
 end
 
 

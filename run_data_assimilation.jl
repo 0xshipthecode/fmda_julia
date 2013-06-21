@@ -25,10 +25,29 @@ import Stations.Station, Stations.Observation, Stations.load_station_info,
 using Kriging
 import Kriging.trend_surface_model_kriging
 
+using NetCDF
 using WRF
 
 using FM
 import FM.FMModel, FM.advance_model, FM.kalman_update
+
+function create_fm_variables(file_name)
+
+    # first extract the dimensions
+    nc = NetCDF.open(file_name)
+    we_dim = nc.dim["west_east"]
+    sn_dim = nc.dim["south_north"]
+    t_dim = nc.dim["Time"]
+    NetCDF.close(nc)
+
+    var_names = ASCIIString[ "FM1", "FM10", "FM100" ]
+    long_names = ["1hr fuel moisture", "10hr fuel moisture", "100hr fuel moisture"]
+    for i in 1:3
+        atts = {"coordinates"=>"XLONG XLAT","units"=>"kg/kg","stagger"=>"","MemoryOrder"=>"XY ","description"=>long_names[i]}
+        NetCDF.nccreate(file_name, var_names[i], atts, we_dim, sn_dim, t_dim)
+    end
+end
+
 
 
 function main(args)
@@ -67,7 +86,7 @@ function main(args)
     setup_tag("fm10_model_na_state", false, false)
     setup_tag("fm10_model_deltas", false, false)
 
-    setup_tag("kriging_beta", false, true)
+    setup_tag("kriging_beta", true, true)
     setup_tag("kriging_xtx_cond", false, true)
     setup_tag("kriging_field", false, false)
     setup_tag("kriging_variance", false, false)
@@ -92,15 +111,15 @@ function main(args)
 
     # read in data from the WRF output file pointed to by cfg
     w = WRF.load_wrf_data(cfg["wrf_output"], ["HGT"])
-
+ 
     # the terrain height need not be stored for all time points
     WRF.slice_field(w, "HGT")
 
     # extract WRF fields
-    lat, lon = WRF.lat(w), WRF.lon(w)
-    wtm = WRF.times(w)
-    println("INFO: WRF grid size is $(size(lat,1)) x $(size(lat,2)) and found $(length(wtm)) timepoints.")
+    lat, lon = WRF.lat(w), WRF.lon(w) 
     dsize = size(lat)
+    wtm = WRF.times(w)
+    println("INFO: WRF grid size is $(dsize[1]) x $(dsize[2]) and found $(length(wtm)) timepoints.")
 
     # retrieve equilibria and rain (these are already precomputed)
     Ed, Ew = WRF.field(w, "Ed"), WRF.field(w, "Ew")
@@ -140,7 +159,7 @@ function main(args)
     Nf = 3
 
     # construct initial conditions (FIXME: can we do better here?)
-    E = squeeze(0.5 * (Ed[2,:,:] + Ew[2,:,:]), 1)
+    E = squeeze(0.5 * (Ed[:,:,2] + Ew[:,:,2]), 3)
 
     # set up parameters
     Q = diagm(cfg["Q"])
@@ -195,6 +214,11 @@ function main(args)
 	end
     end
 
+    # create the new variables in the wrfout file for storing fuel moisture
+    println("INFO: creating FM variables in wrfout file")
+#    create_fm_variables(cfg["wrf_output"])
+    nc = NetCDF.open(cfg["wrf_output"], NetCDF.NC_WRITE)
+
     ###  Run the model and data assimilation
     for t in 2:length(wtm)
     	mt = wtm[t]
@@ -203,8 +227,8 @@ function main(args)
         # run the model update (in parallel if possible)
 	for i in 1:dsize[1]
 	    for j in 1:dsize[2]
-	        advance_model(models[i,j], Ed[t-1, i, j], Ew[t-1, i, j], rain[t-1, i, j], dt, Q)
-		advance_model(models_na[i,j], Ed[t-1, i, j], Ew[t-1, i, j], rain[t-1, i, j], dt, Q)
+	        advance_model(models[i,j], Ed[i, j, t-1], Ew[i, j, t-1], rain[i, j, t-1], dt, Q)
+		advance_model(models_na[i,j], Ed[i, j, t-1], Ew[i, j, t-1], rain[i, j, t-1], dt, Q)
 	    end
 	end
 
@@ -232,19 +256,20 @@ function main(args)
 
             # set the current fm10 model state as the covariate
             X[:,:,1] = fm10_model_state
+
 #            fm10_norm = sum(fm10_model_state.^2)^0.5
             println("INFO: assimilating $(length(obs_i)) obsevations.")
 
-            # loop over dynamic covariates
+            # loop over additional covariates
             for i in 2:Xd3
                 cov_id = cov_ids[i-1]
-                if has(st_covar_map, cov_id)
+                if haskey(st_covar_map, cov_id)
                     # just copy and rescale corresponding static covariate
                     X[:,:,i] = Xr[:,:,i]
-                elseif has(dyn_covar_map, cov_id)
+                elseif haskey(dyn_covar_map, cov_id)
                     # retrieve the field pointed to by the dynamic covariate id
                     F = dyn_covar_map[cov_id]
-                    X[:,:,i] = squeeze(F[t,:,:], 1)
+                    X[:,:,i] = squeeze(F[:,:,t], 3)
                 else
                     error("FATAL: found unknown covariate.")
                 end
@@ -288,6 +313,15 @@ function main(args)
             fm10_model_state = [ models[i,j].m_ext[2] for i=1:dsize[1], j=1:dsize[2] ]
             spush("fm10_model_state_assim", fm10_model_state)
 
+            # store current assimilated state in the wrfout file
+            fm_stor = zeros(Float64, (dsize[1], dsize[2], 1))
+            fm_stor[:,:,1] = [ models[i,j].m_ext[1] for i=1:dsize[1], j=1:dsize[2] ]
+            NetCDF.putvar(nc, "FM1", [1, 1, t], fm_stor)
+            fm_stor[:,:,1] = [ models[i,j].m_ext[2] for i=1:dsize[1], j=1:dsize[2] ]
+            NetCDF.putvar(nc, "FM10", [1, 1, t], fm_stor)
+            fm_stor[:,:,1] = [ models[i,j].m_ext[3] for i=1:dsize[1], j=1:dsize[2] ]
+            NetCDF.putvar(nc, "FM100", [1, 1, t], fm_stor)
+
             # retrieve adjustments to time constants and to equilibria
             fm10_adj = zeros(Float64, (6, dsize[1], dsize[2]))
             for i in 1:dsize[1]
@@ -312,6 +346,8 @@ function main(args)
 
     # Close down the storage system
     Storage.sclose()
+
+    NetCDF.close(nc)
 
     t2 = Calendar.now()
     println("INFO: simulation completed at $t2 after $(t2-t1).")

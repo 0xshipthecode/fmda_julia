@@ -389,10 +389,12 @@ end
 
 function nccreate(fil::String,varname::String,atts::Dict,dims...)
   # Checking dims argument for correctness
-  dim=parsedimargs(dims)
+#  dim=parsedimargs(dims)
+  dim = [a for a in dims]  
   # to be done
   # open the file
   # create the NcVar object
+  println("Creating varname $varname")
   v=NcVar(varname,dim,atts,Float64)
   # Test if the file already exists
   if (isfile(fil)) 
@@ -419,7 +421,9 @@ function nccreate(fil::String,varname::String,atts::Dict,dims...)
         _nc_def_dim_c(nc.ncid,d.name,d.dimlen,dima);
         d.dimid=dima[1];
         v.dimids[i]=d.dimid;
+        dcreate[i] = true
       else
+        dcreate[i] = false
         v.dimids[i]=nc.dim[d.name].dimid;
       end
       i=i+1
@@ -443,7 +447,7 @@ function nccreate(fil::String,varname::String,atts::Dict,dims...)
       if (dcreate[i])
         ncwrite(d.vals,fil,d.name)
       end
-      i=i+1
+     i=i+1
     end
   else
     println(v.dim)

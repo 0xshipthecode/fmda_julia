@@ -76,8 +76,8 @@ function trend_surface_model_kriging(obs_data, X, K, V)
         Xobs[i,:] = X[p[1], p[2], :]
         m_var[i] = obs_variance(obs)
     end
-    
-    # if we have zero covariates (e.g. there is no rain in the entire domain at
+
+    # if we have covariates full of zeros (e.g. there is no rain in the entire domain at
     # the current simulation time), we must exclude them or a singular exception
     # will be thrown by '\'
     cov_ids = (1:Ncov_all)[find(map(i -> sum(Xobs[:,i].^2) > 0, 1:Ncov_all))]
@@ -121,6 +121,7 @@ function trend_surface_model_kriging(obs_data, X, K, V)
         yt = Sigma_1_2 * y
         Q, R = qr(Sigma_1_2 * Xobs)
         beta = R \ (Q' * yt)
+        res = y - Xobs * beta
 
         # compute new estimate of variance of microscale variability
         s2_array = res.^2 - m_var
@@ -142,7 +143,7 @@ function trend_surface_model_kriging(obs_data, X, K, V)
 
     # compute the OLS fit of the covariates to the observations
     spush("kriging_xtx_cond", cond(XtSX))
-    spush("kriging_errors", (Xobs * beta - y)')
+    spush("kriging_errors", (y - Xobs * beta)')
 
     # printing construction that makes sure order of printed betas does not vary
     # across times even if there are zero covariates

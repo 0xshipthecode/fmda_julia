@@ -135,7 +135,6 @@ function load_station_info(fname :: String)
 
     # read all observation types acquired by the station
     s.sensors = map(x -> strip(x), split(readline_skip_comments(io), ","))
-    println(s.sensors)
 
     # create var time series containers
     for v in s.sensors
@@ -201,7 +200,7 @@ function build_observation_data(ss::Array{Station}, obs_type::String)
     # repackage into a time-indexed structure
     obs_data = Dict{CalendarTime,Array{Observation}}()
     for o in obs
-        if has(obs_data, o.tm) push!(obs_data[o.tm], o) else obs_data[o.tm] = [o] end
+        if haskey(obs_data, o.tm) push!(obs_data[o.tm], o) else obs_data[o.tm] = [o] end
     end
 
     return obs_data
