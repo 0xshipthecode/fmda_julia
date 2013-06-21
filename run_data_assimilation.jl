@@ -318,15 +318,6 @@ function main(args)
             fm10_model_state = [ models[i,j].m_ext[2] for i=1:dsize[1], j=1:dsize[2] ]
             spush("fm10_model_state_assim", fm10_model_state)
 
-            # store current assimilated state in the wrfout file
-            fm_stor = zeros(Float64, (dsize[1], dsize[2], 1))
-            fm_stor[:,:,1] = [ models[i,j].m_ext[1] for i=1:dsize[1], j=1:dsize[2] ]
-            NetCDF.putvar(nc, "FM1", [1, 1, t], fm_stor)
-            fm_stor[:,:,1] = [ models[i,j].m_ext[2] for i=1:dsize[1], j=1:dsize[2] ]
-            NetCDF.putvar(nc, "FM10", [1, 1, t], fm_stor)
-            fm_stor[:,:,1] = [ models[i,j].m_ext[3] for i=1:dsize[1], j=1:dsize[2] ]
-            NetCDF.putvar(nc, "FM100", [1, 1, t], fm_stor)
-
             # retrieve adjustments to time constants and to equilibria
             fm10_adj = zeros(Float64, (6, dsize[1], dsize[2]))
             for i in 1:dsize[1]
@@ -347,6 +338,16 @@ function main(args)
             next_frame()
 
         end # if there is anything to assimilate
+
+        # store current assimilated state in the wrfout file
+        fm_stor = zeros(Float64, (dsize[1], dsize[2], 1))
+        fm_stor[:,:,1] = [ models[i,j].m_ext[1] for i=1:dsize[1], j=1:dsize[2] ]
+        NetCDF.putvar(nc, "FM1", [1, 1, t], fm_stor)
+        fm_stor[:,:,1] = [ models[i,j].m_ext[2] for i=1:dsize[1], j=1:dsize[2] ]
+        NetCDF.putvar(nc, "FM10", [1, 1, t], fm_stor)
+        fm_stor[:,:,1] = [ models[i,j].m_ext[3] for i=1:dsize[1], j=1:dsize[2] ]
+        NetCDF.putvar(nc, "FM100", [1, 1, t], fm_stor)
+
     end # for each time point
 
     # Close down the storage system
