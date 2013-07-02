@@ -80,10 +80,19 @@ function trend_surface_model_kriging(obs_data, X, K, V)
     # if we have covariates full of zeros (e.g. there is no rain in the entire domain at
     # the current simulation time), we must exclude them or a singular exception
     # will be thrown by '\'
-    cov_ids = (1:Ncov_all)[find(map(i -> sum(Xobs[:,i].^2) > 0, 1:Ncov_all))]
+    cov_ids = find(map(i -> sum(Xobs[:,i].^2) > 0, 1:Ncov_all))
     Ncov = length(cov_ids)
     X = X[:,:,cov_ids]
     Xobs = Xobs[:, cov_ids]
+
+    # if there are less observations than covariates, remove
+    # Ncov - Nobs covariates from end
+    if Ncov > Nobs
+        Ncov = Nobs
+        cov_ids = cov_ids[1:Ncov]
+        X = X[:,:,1:Ncov]
+        Xobs = Xobs[:, 1:Ncov]
+    end
 
     # quick pre-conditioning hack
     # rescale all columns of Xobs to have norm of first column

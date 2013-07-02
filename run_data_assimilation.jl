@@ -263,7 +263,7 @@ function main(args)
             X[:,:,1] = fm10_model_state
 
 #            fm10_norm = sum(fm10_model_state.^2)^0.5
-            println("INFO: assimilating $(length(obs_i)) obsevations.")
+            println("INFO: assimilating $(length(obs_i)) observations.")
 
             # loop over additional covariates
             for i in 2:Xd3
