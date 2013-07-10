@@ -26,10 +26,10 @@ Installing Prerequisites
 
 **Julia**
 
-  git clone http://github.com/JuliaLang/julia.git
-  cd julia
-  git checkout ded337b9
-  make
+    git clone http://github.com/JuliaLang/julia.git
+    cd julia
+    git checkout ded337b9
+    make
 
 The make step will take some time as many dependencies are pulled in and compiled.  After the compilation, the ''julia'' executable file should be available in the current directory.
 
