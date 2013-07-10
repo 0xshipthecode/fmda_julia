@@ -31,7 +31,7 @@ Installing Prerequisites
     git checkout ded337b9
     make
 
-The make step will take some time as many dependencies are pulled in and compiled.  After the compilation, the ''julia'' executable file should be available in the current directory.
+The make step will take some time as many dependencies are pulled in and compiled.  After the compilation, the ''julia'' executable file should be available in the current directory.  Make sure the julia executable is available on the ''PATH''.
 
 **fmda_scraper**
 
@@ -109,7 +109,12 @@ Execute the following in the `fmda_julia` directory:
 
     ./run_data_assimilation.jl <path_to_config_file>
 
-This will load all available inputs and start processing the wrfout file and the obtained measurements.
+This will load all available inputs and start processing the wrfout file and the obtained measurements.  If the ''julia'' executable is not available on the system ''PATH'' then the executable must be run as
+
+    <path-to-julia> run_data_assimilation.jl <path-to-config-file>
+
+in the ''fmda_julia'' directory.
+
 
 Results of the run
 ------------------
