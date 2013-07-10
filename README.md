@@ -74,9 +74,9 @@ are stored.  The third key `station_info` is the list of stations that should be
 list is identical to that for [fmda_scraper](http://github.com/vejmelkam/fmda_scraper "fmda_scraper").  The `output_dir`
 points to a directory where the execution log and output files will be stored.
 
-The ''output_dir'' must exist.
+The `output_dir` must exist.
 
-The ''wrf_output'' file is the WRF output file for the domain on which the moisture code is to be run.  **NOTE** always have a backup of the wrf_output file or use a copy of the output as the wrfout file is modified by the moisture code.
+The `wrf_output` file is the WRF output file for the domain on which the moisture code is to be run.  **NOTE** always have a backup of the wrf_output file or use a copy of the output as the wrfout file is modified by the moisture code.
 
 
 
@@ -109,14 +109,14 @@ Execute the following in the `fmda_julia` directory:
 
     ./run_data_assimilation.jl <path_to_config_file>
 
-This will load all available inputs and start processing the wrfout file and the obtained measurements.  If the ''julia'' executable is not available on the system ''PATH'' then the executable must be run as
+This will load all available inputs and start processing the wrfout file and the obtained measurements.  If the `julia` executable is not available on the system `PATH` then the executable must be run as
 
     <path-to-julia> run_data_assimilation.jl <path-to-config-file>
 
-in the ''fmda_julia'' directory.
+in the `fmda_julia` directory.
 
 
 Results of the run
 ------------------
 
-The julia code will create three new variables in the NetCDF wrfout file, named ''FM1'', ''FM10'' and ''FM100'', which will contain the assimilated fuel moisture.  The first time instant is empty, the fuel moisture values are filled from the second time instant forward.
+The julia code will create three new variables in the NetCDF wrfout file, named `FM1`, `FM10` and `FM100`, which will contain the assimilated fuel moisture.  The first time instant is empty, the fuel moisture values are filled from the second time instant forward.
