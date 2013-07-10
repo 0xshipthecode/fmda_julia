@@ -8,7 +8,7 @@ together with remote automatic weather station observations (RAWS) and produce i
 area covered by the WRF grid.
 
 The fmda_julia code uses a Trend Surface Modeling approach together with a Kalman filter running at each grid point to
-assimilation station observations into the moisture model.
+assimilate ground station observations from the [MesoWest](http://http://mesowest.utah.edu/ "MesoWest") network into the moisture model.
 
 The code simulates three types of dead fuel: 1hr, 10hr and 100hr.
 
